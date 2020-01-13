@@ -11,6 +11,9 @@ module.exports = function bot(config, action, params) {
         const tweetsId = data.statuses
         .map(tweet => ({ id: tweet.id_str }));
 
+        const tweetstatuses = data.statuses
+        .map(tweetstatus => ({ status: tweetstatus.text }));
+
         if(action == 'retweet'){
             tweetsId.map(tweetId => {
                 T.post('statuses/retweet', tweetId, (err, response) => {
@@ -52,6 +55,7 @@ module.exports = function bot(config, action, params) {
 
                 // Loop through the returned tweets
                 for(let i = 0; i < data.statuses.length; i++){
+                    tweetNum += 1;
                 // Get the screen_name from the returned data
                 // let screen_name = popularUsers[i].user.screen_name;
                 let screen_name = data.statuses[i].user.screen_name; //will follow all users, with no filter/discrimination within them
@@ -66,6 +70,44 @@ module.exports = function bot(config, action, params) {
                   }
                 });
               };
+        }
+        else if(action == 'tweet'){
+
+            // Loop n times where n stands for the number of times you want to repeat the same tweet
+            for(let i = 0; i < params.count; i++){
+                tweetNum += 1;
+                let tweetStatus = {
+                    "status": ""
+                };
+                tweetStatus.status = params.q + ` ${i}`;
+                // THE BULK-TWEET MAGIC GOES HERE
+                T.post('statuses/update', tweetStatus, function(err, response){
+                if(err){
+                    emitter.emit(action+'fail');
+                    result[`tweet${tweetNum}`] = JSON.parse(`{ "action": "${action}", "status": "Failed", "actor_user": "", "tweetText":"${tweetStatus}" }`);
+                } else {
+                    emitter.emit(action);
+                    result[`tweet${tweetNum}`] = JSON.parse(`{ "tweetID": "${response.id_str}", "action": "${action}", "status": "Success", "actor_user": "${response.screen_name}", "tweetText":"${tweetStatus}" }`);
+                }
+            });
+          };
+        }
+        else if(action == 'copytweet'){
+            tweetstatuses.map(tweet => {
+                T.post('statuses/update', tweet, (err, response) => {
+                    tweetNum += 1;
+                    if(err){
+                        emitter.emit(action+'fail');
+                        result[`tweet${tweetNum}`] = JSON.parse(`{ "action": "${action}", "status": "${err[0].message}" }`);
+                    }
+                    else{
+                        emitter.emit(action);
+                        const username = response.user.screen_name;
+                        const retwittedTweetId = response.id_str;
+                        result[`tweet${tweetNum}`] = JSON.parse(`{ "action": "${action}", "status": "Success" }`);
+                    }
+                });
+            })
         }
         else{
             emitter.emit('notsupported');
