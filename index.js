@@ -2,7 +2,7 @@ const Twitter = require('twitter');
 const events = require('events');
 const emitter = new events.EventEmitter();
 
-module.exports = function bot(config, action, params) {
+module.exports = function bot(config, action, params, callback) {
     const T = new Twitter(config);
     var result = {};
     var tweetNum = 0;
@@ -113,6 +113,8 @@ module.exports = function bot(config, action, params) {
             emitter.emit('notsupported');
             return new Error(`Specified action not supported!`);
         }
+        if(tweetNum == tweetsId.length){
+            callback(result);
+        }
     });
-    return result;
 }
